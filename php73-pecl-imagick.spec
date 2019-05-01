@@ -20,10 +20,16 @@ URL:            https://pecl.php.net/package/%{pecl_name}
 Source0:        https://pecl.php.net/get/%{pecl_name}-%{version}.tgz
 Patch0:         https://patch-diff.githubusercontent.com/raw/mkoppanen/imagick/pull/221.patch
 
-BuildRequires: php-pear >= 1.4.7
 BuildRequires: %{php}-devel
 # https://github.com/mkoppanen/imagick/blob/3.4.3/ChangeLog#L127
 BuildRequires: ImageMagick-devel >= 6.5.3.10
+
+BuildRequires:  pear1u
+# explicitly require pear dependencies to avoid conflicts
+BuildRequires:  %{php}-cli
+BuildRequires:  %{php}-common
+BuildRequires:  %{php}-process
+BuildRequires:  %{php}-xml
 
 Requires:       php(zend-abi) = %{php_zend_api}
 Requires:       php(api) = %{php_core_api}
@@ -188,6 +194,24 @@ popd
 %endif
 
 
+%triggerin -- pear1u
+if [ -x %{__pecl} ]; then
+    %{pecl_install} %{pecl_xmldir}/%{pecl_name}.xml >/dev/null || :
+fi
+
+
+%posttrans
+if [ -x %{__pecl} ]; then
+    %{pecl_install} %{pecl_xmldir}/%{pecl_name}.xml >/dev/null || :
+fi
+
+
+%postun
+if [ $1 -eq 0 -a -x %{__pecl} ]; then
+    %{pecl_uninstall} %{pecl_name} >/dev/null || :
+fi
+
+
 %files
 %doc %{pecl_docdir}/%{pecl_name}
 %{pecl_xmldir}/%{pecl_name}.xml
@@ -214,6 +238,7 @@ popd
 * Wed May 01 2019 Matt Linscott <matt.linscott@gmail.com> - 3.4.3-11
 - Port from Fedora to IUS
 - Install package.xml as %%{pecl_name}.xml, not %%{name}.xml
+- Remove pear requirement and add scriptlets (adapted from remirepo)
 
 * Sat Feb 02 2019 Fedora Release Engineering <releng@fedoraproject.org> - 3.4.3-11
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
