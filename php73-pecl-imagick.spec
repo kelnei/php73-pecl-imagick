@@ -143,7 +143,7 @@ make install INSTALL_ROOT=%{buildroot} -C NTS
 install -D -m 644 %{ini_name} %{buildroot}%{php_inidir}/%{ini_name}
 
 # Install XML package description
-install -D -p -m 644 package.xml %{buildroot}%{pecl_xmldir}/%{name}.xml
+install -D -p -m 644 package.xml %{buildroot}%{pecl_xmldir}/%{pecl_name}.xml
 
 %if %{with zts}
 make install INSTALL_ROOT=%{buildroot} -C ZTS
@@ -190,7 +190,7 @@ popd
 
 %files
 %doc %{pecl_docdir}/%{pecl_name}
-%{pecl_xmldir}/%{name}.xml
+%{pecl_xmldir}/%{pecl_name}.xml
 
 %config(noreplace) %{php_inidir}/%{ini_name}
 %{php_extdir}/%{pecl_name}.so
@@ -213,6 +213,7 @@ popd
 %changelog
 * Wed May 01 2019 Matt Linscott <matt.linscott@gmail.com> - 3.4.3-11
 - Port from Fedora to IUS
+- Install package.xml as %%{pecl_name}.xml, not %%{name}.xml
 
 * Sat Feb 02 2019 Fedora Release Engineering <releng@fedoraproject.org> - 3.4.3-11
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
