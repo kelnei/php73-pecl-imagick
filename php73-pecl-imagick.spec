@@ -1,44 +1,66 @@
-# we don't want -z defs linker flag
-%undefine _strict_symbol_defs_build
-
+# IUS spec file for php73-pecl-imagick, forked from:
+#
+# Fedora spec file for php-pecl-imagick
+#
 %global pecl_name  imagick
 %global ini_name   40-%{pecl_name}.ini
-%global with_zts   0%{?__ztsphp:1}
+%global php        php73
+
+%bcond_with zts
+
 
 Summary:        Provides a wrapper to the ImageMagick library
-Name:           php-pecl-%pecl_name
+Name:           %{php}-pecl-%{pecl_name}
 Version:        3.4.3
 Release:        11%{?dist}
 License:        PHP
-URL:            http://pecl.php.net/package/%pecl_name
+Group:          Development/Libraries
+URL:            https://pecl.php.net/package/%{pecl_name}
 
-Source0:        http://pecl.php.net/get/%pecl_name-%{version}%{?prever}.tgz
+Source0:        https://pecl.php.net/get/%{pecl_name}-%{version}.tgz
 Patch0:         https://patch-diff.githubusercontent.com/raw/mkoppanen/imagick/pull/221.patch
 
-BuildRequires:  php-pear >= 1.4.7
-BuildRequires:  php-devel >= 5.1.3
-BuildRequires:  ImageMagick-devel >= 6.2.4
+BuildRequires: php-pear >= 1.4.7
+BuildRequires: %{php}-devel
+# https://github.com/mkoppanen/imagick/blob/3.4.3/ChangeLog#L127
+BuildRequires: ImageMagick-devel >= 6.5.3.10
 
 Requires:       php(zend-abi) = %{php_zend_api}
 Requires:       php(api) = %{php_core_api}
 
-Provides:       php-%pecl_name               = %{version}
-Provides:       php-%pecl_name%{?_isa}       = %{version}
-Provides:       php-pecl(%pecl_name)         = %{version}
-Provides:       php-pecl(%pecl_name)%{?_isa} = %{version}
+Provides:       php-%{pecl_name}               = %{version}
+Provides:       php-%{pecl_name}%{?_isa}       = %{version}
+Provides:       php-pecl(%{pecl_name})         = %{version}
+Provides:       php-pecl(%{pecl_name})%{?_isa} = %{version}
 
 Conflicts:      php-pecl-gmagick
 
+# safe replacement
+Provides:       php-pecl-%{pecl_name} = %{version}-%{release}
+Provides:       php-pecl-%{pecl_name}%{?_isa} = %{version}-%{release}
+Conflicts:      php-pecl-%{pecl_name} < %{version}-%{release}
+
+%{?filter_provides_in: %filter_provides_in %{php_extdir}/.*\.so$}
+%{?filter_provides_in: %filter_provides_in %{php_ztsextdir}/.*\.so$}
+%{?filter_setup}
+
 
 %description
-%pecl_name is a native php extension to create and modify images using the
+%{pecl_name} is a native php extension to create and modify images using the
 ImageMagick API.
 
 
 %package devel
 Summary:       %{pecl_name} extension developer files (header)
+Group:         Development/Libraries
 Requires:      %{name}%{?_isa} = %{version}-%{release}
-Requires:      %{?scl_prefix}php-devel%{?_isa}
+Requires:      %{php}-devel%{?_isa}
+
+# safe replacement
+Provides:       php-pecl-%{pecl_name}-devel = %{version}-%{release}
+Provides:       php-pecl-%{pecl_name}-devel%{?_isa} = %{version}-%{release}
+Conflicts:      php-pecl-%{pecl_name}-devel < %{version}-%{release}
+
 
 %description devel
 These are the files needed to compile programs using %{pecl_name} extension.
@@ -46,7 +68,7 @@ These are the files needed to compile programs using %{pecl_name} extension.
 
 %prep
 %setup -qc
-mv %{pecl_name}-%{version}%{?prever} NTS
+mv %{pecl_name}-%{version} NTS
 
 # don't install any font (and test using it)
 # don't install empty file (d41d8cd98f00b204e9800998ecf8427e)
@@ -61,15 +83,15 @@ then : "Font files detected!"
      exit 1
 fi
 
-cd NTS
+pushd NTS
 %patch0 -p1
 
 extver=$(sed -n '/#define PHP_IMAGICK_VERSION/{s/.* "//;s/".*$//;p}' php_imagick.h)
-if test "x${extver}" != "x%{version}%{?prever}"; then
-   : Error: Upstream version is ${extver}, expecting %{version}%{?prever}.
+if test "x${extver}" != "x%{version}"; then
+   : Error: Upstream version is ${extver}, expecting %{version}.
    exit 1
 fi
-cd ..
+popd
 
 cat > %{ini_name} << 'EOF'
 ; Enable %{pecl_name} extension module
@@ -87,24 +109,30 @@ imagick.skip_version_check=1
 ;imagick.progress_monitor=0
 EOF
 
-%if %{with_zts}
+%if %{with zts}
 cp -r NTS ZTS
 %endif
 
 
 %build
 : Standard NTS build
-cd NTS
+pushd NTS
 %{_bindir}/phpize
-%configure --with-imagick=%{prefix} --with-php-config=%{_bindir}/php-config
-make %{?_smp_mflags}
+%configure \
+  --with-imagick=%{prefix} \
+  --with-php-config=%{_bindir}/php-config
+%make_build
+popd
 
-%if %{with_zts}
-cd ../ZTS
+%if %{with zts}
+pushd ZTS
 : ZTS build
 %{_bindir}/zts-phpize
-%configure --with-imagick=%{prefix} --with-php-config=%{_bindir}/zts-php-config
-make %{?_smp_mflags}
+%configure \
+  --with-imagick=%{prefix} \
+  --with-php-config=%{_bindir}/zts-php-config
+%make_build
+popd
 %endif
 
 
@@ -117,18 +145,17 @@ install -D -m 644 %{ini_name} %{buildroot}%{php_inidir}/%{ini_name}
 # Install XML package description
 install -D -p -m 644 package.xml %{buildroot}%{pecl_xmldir}/%{name}.xml
 
-%if %{with_zts}
+%if %{with zts}
 make install INSTALL_ROOT=%{buildroot} -C ZTS
 install -D -m 644 %{ini_name} %{buildroot}%{php_ztsinidir}/%{ini_name}
 %endif
 
 # Test & Documentation
-cd NTS
-for i in $(grep 'role="test"' ../package.xml | sed -e 's/^.*name="//;s/".*$//')
-do [ -f $i ]          && install -Dpm 644 $i          %{buildroot}%{pecl_testdir}/%{pecl_name}/$i
+for i in $(grep 'role="test"' package.xml | sed -e 's/^.*name="//;s/".*$//')
+do [ -f NTS/$i ] && install -D -p -m 644 NTS/$i %{buildroot}%{pecl_testdir}/%{pecl_name}/$i
 done
-for i in $(grep 'role="doc"' ../package.xml | sed -e 's/^.*name="//;s/".*$//')
-do [ -f $i ]          &&  install -Dpm 644 $i          %{buildroot}%{pecl_docdir}/%{pecl_name}/$i
+for i in $(grep 'role="doc"' package.xml | sed -e 's/^.*name="//;s/".*$//')
+do [ -f NTS/$i ] && install -D -p -m 644 NTS/$i %{buildroot}%{pecl_docdir}/%{pecl_name}/$i
 done
 
 
@@ -136,7 +163,7 @@ done
 export REPORT_EXIT_STATUS=1
 
 : simple module load test for NTS extension
-cd NTS
+pushd NTS
 %{__php} --no-php-ini \
     --define extension_dir=%{buildroot}%{php_extdir} \
     --define extension=%{pecl_name}.so \
@@ -151,9 +178,9 @@ TEST_PHP_ARGS="-n -d extension=%{buildroot}%{php_extdir}/%{pecl_name}.so" \
 NO_INTERACTION=1 \
 %{__php} -n run-tests.php --show-diff
 
-%if %{with_zts}
+%if %{with zts}
 : simple module load test for ZTS extension
-cd ../ZTS
+popd
 %{__ztsphp} --no-php-ini \
     --define extension_dir=%{buildroot}%{php_ztsextdir} \
     --define extension=%{pecl_name}.so \
@@ -168,7 +195,7 @@ cd ../ZTS
 %config(noreplace) %{php_inidir}/%{ini_name}
 %{php_extdir}/%{pecl_name}.so
 
-%if %{with_zts}
+%if %{with zts}
 %config(noreplace) %{php_ztsinidir}/%{ini_name}
 %{php_ztsextdir}/%{pecl_name}.so
 %endif
@@ -178,12 +205,15 @@ cd ../ZTS
 %doc %{pecl_testdir}/%{pecl_name}
 %{php_incldir}/ext/%{pecl_name}
 
-%if %{with_zts}
+%if %{with zts}
 %{php_ztsincldir}/ext/%{pecl_name}
 %endif
 
 
 %changelog
+* Wed May 01 2019 Matt Linscott <matt.linscott@gmail.com> - 3.4.3-11
+- Port from Fedora to IUS
+
 * Sat Feb 02 2019 Fedora Release Engineering <releng@fedoraproject.org> - 3.4.3-11
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
 
