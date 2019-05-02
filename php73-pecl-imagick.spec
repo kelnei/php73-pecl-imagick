@@ -216,6 +216,7 @@ fi
 
 
 %files
+%license NTS/LICENSE
 %doc %{pecl_docdir}/%{pecl_name}
 %{pecl_xmldir}/%{pecl_name}.xml
 
@@ -242,6 +243,7 @@ fi
 - Port from Fedora to IUS
 - Install package.xml as %%{pecl_name}.xml, not %%{name}.xml
 - Remove pear requirement and add scriptlets (adapted from remirepo)
+- Properly install license
 
 * Sat Feb 02 2019 Fedora Release Engineering <releng@fedoraproject.org> - 3.4.3-11
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
